@@ -327,7 +327,7 @@ class HostController < ApplicationController
       end
       build_targets_hash(hostitems)
       @view = get_db_view(Host)       # Instantiate the MIQ Report view object
-      @view.table = MiqFilter.records2table(hostitems, :only => @view.cols + ['id'])
+      @view.table = MiqFilter.records2table(hostitems, @view.cols + ['id'])
     end
   end
 
@@ -468,10 +468,10 @@ class HostController < ApplicationController
     @edit = session[:edit]                                  # Restore @edit for adv search box
     params[:display] = @display if ["vms", "storages"].include?(@display)  # Were we displaying vms/storages
 
-    if params[:pressed].starts_with?("vm_") || # Handle buttons from sub-items screen
-       params[:pressed].starts_with?("miq_template_") ||
-       params[:pressed].starts_with?("guest_") ||
-       params[:pressed].starts_with?("storage_")
+    if params[:pressed].starts_with?("vm_", # Handle buttons from sub-items screen
+                                     "miq_template_",
+                                     "guest_",
+                                     "storage_")
 
       pfx = pfx_for_vm_button_pressed(params[:pressed])
       process_vm_buttons(pfx)

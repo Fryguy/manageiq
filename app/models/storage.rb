@@ -72,7 +72,8 @@ class Storage < ActiveRecord::Base
   end
 
   def ext_management_systems
-    @ext_management_systems ||= Host.includes(:storages).select { |h| h.storages.include?(self) }.collect(&:ext_management_system).compact.uniq
+    @ext_management_systems ||= ExtManagementSystem.joins(:hosts => :storages).where(
+      :host_storages => {:storage_id => id}).uniq.to_a
   end
 
   def ext_management_systems_in_zone(zone_name)
@@ -370,11 +371,9 @@ class Storage < ActiveRecord::Base
   # Cache storage file counts for the entire list of storages so that looping over
   # storages to get total_unmanaged_vms in a report or view is optimized
   cache_with_timeout(:total_unmanaged_vms, 15.seconds) do
-    StorageFile.all(
-      :select     => "COUNT(id) AS storage_file_count, storage_id",
-      :conditions => {:ext_name => "vmx", :vm_or_template_id => nil},
-      :group      => :storage_id
-    ).each_with_object(Hash.new(0)) { |sf, h| h[sf.storage_id] = sf.storage_file_count.to_i }
+    StorageFile.where(:ext_name => "vmx", :vm_or_template_id => nil)
+      .group("storage_id").pluck("storage_id, COUNT(*) AS vm_count")
+      .each_with_object(Hash.new(0)) { |(storage_id, count), h| h[storage_id] = count.to_i }
   end
 
   def total_unmanaged_vms
@@ -386,11 +385,9 @@ class Storage < ActiveRecord::Base
     delta_clause = "base_name NOT LIKE '%-delta.vmdk'"
     snap_clause  = "AND #{ActiveRecordQueryParts.not_regexp("base_name", "%\-[0-9][0-9][0-9][0-9][0-9][0-9]\.vmdk")}"
 
-    StorageFile.all(
-      :select     => "COUNT(id) AS storage_file_count, storage_id",
-      :conditions => "ext_name = 'vmdk' AND #{flat_clause} AND #{delta_clause} #{snap_clause}",
-      :group      => :storage_id
-    ).each_with_object(Hash.new(0)) { |sf, h| h[sf.storage_id] = sf.storage_file_count.to_i }
+    StorageFile.where("ext_name = 'vmdk' AND #{flat_clause} AND #{delta_clause} #{snap_clause}")
+      .group("storage_id").pluck("storage_id, COUNT(*) AS vm_count")
+      .each_with_object(Hash.new(0)) { |(storage_id, count), h| h[storage_id] = count.to_i }
   end
 
   def count_of_vmdk_disk_files
@@ -406,11 +403,9 @@ class Storage < ActiveRecord::Base
   end
 
   cache_with_timeout(:unmanaged_vm_counts_by_storage_id, 15.seconds) do
-    Vm.all(
-      :conditions => ["((vms.template = ? AND vms.ems_id IS NOT NULL) OR vms.host_id IS NOT NULL)", true],
-      :select     => "COUNT(id) AS vm_count, storage_id",
-      :group      => "storage_id"
-    ).each_with_object(Hash.new(0)) { |v, h| h[v.storage_id] = v.vm_count.to_i }
+    Vm.where("((vms.template = ? AND vms.ems_id IS NOT NULL) OR vms.host_id IS NOT NULL)", true)
+      .group("storage_id").pluck("storage_id, COUNT(*) AS vm_count")
+      .each_with_object(Hash.new(0)) { |(storage_id, count), h| h[storage_id] = count.to_i }
   end
 
   def total_managed_registered_vms
@@ -422,11 +417,9 @@ class Storage < ActiveRecord::Base
   end
 
   cache_with_timeout(:unregistered_vm_counts_by_storage_id, 15.seconds) do
-    Vm.all(
-      :conditions => ["((vms.template = ? AND vms.ems_id IS NULL) OR vms.host_id IS NOT NULL)", true],
-      :select     => "COUNT(id) AS vm_count, storage_id",
-      :group      => "storage_id"
-    ).each_with_object(Hash.new(0)) { |v, h| h[v.storage_id] = v.vm_count.to_i }
+    Vm.where("((vms.template = ? AND vms.ems_id IS NULL) OR vms.host_id IS NOT NULL)", true)
+      .group("storage_id").pluck("storage_id, COUNT(*) AS vm_count")
+      .each_with_object(Hash.new(0)) { |(storage_id, count), h| h[storage_id] = count.to_i }
   end
 
   def total_unregistered_vms
@@ -438,11 +431,9 @@ class Storage < ActiveRecord::Base
   end
 
   cache_with_timeout(:managed_unregistered_vm_counts_by_storage_id, 15.seconds) do
-    Vm.all(
-      :conditions => ["((vms.template = ? AND vms.ems_id IS NOT NULL) OR vms.host_id IS NOT NULL)", true],
-      :select     => "COUNT(id) AS vm_count, storage_id",
-      :group      => "storage_id"
-    ).each_with_object(Hash.new(0)) { |v, h| h[v.storage_id] = v.vm_count.to_i }
+    Vm.where("((vms.template = ? AND vms.ems_id IS NULL) OR vms.host_id IS NOT NULL)", true)
+      .group("storage_id").pluck("storage_id, COUNT(*) AS vm_count")
+      .each_with_object(Hash.new(0)) { |(storage_id, count), h| h[storage_id] = count.to_i }
   end
 
   def total_managed_unregistered_vms
@@ -607,10 +598,8 @@ class Storage < ActiveRecord::Base
   end
 
   cache_with_timeout(:vm_counts_by_storage_id, 15.seconds) do
-    Vm.all(
-      :select => "COUNT(id) AS vm_count, storage_id",
-      :group  => "storage_id"
-    ).each_with_object(Hash.new(0)) { |v, h| h[v.storage_id] = v.vm_count.to_i }
+    Vm.group("storage_id").pluck("storage_id, COUNT(*) AS vm_count")
+      .each_with_object(Hash.new(0)) { |(storage_id, count), h| h[storage_id] = count.to_i }
   end
 
   def v_total_vms
@@ -808,9 +797,7 @@ class Storage < ActiveRecord::Base
             vm_perf   = obj_perfs.fetch_path(vm.class.name, vm.id, interval_name, hour)
             vm_perf ||= obj_perfs.store_path(vm.class.name, vm.id, interval_name, hour, vm.send(meth).build(:timestamp => hour, :capture_interval_name => interval_name))
 
-            vm_attrs.reverse_merge!(vm_perf.attributes)
-            vm_attrs.merge!(Metric::Processing.process_derived_columns(vm, vm_attrs))
-            vm_perf.update_attributes(vm_attrs)
+            update_vm_perf(vm, vm_perf, vm_attrs)
           end
         end
 
@@ -829,7 +816,42 @@ class Storage < ActiveRecord::Base
     _log.info "#{log_header} Capture for #{log_target}...Complete - Timings: #{t.inspect}"
   end
 
+  def update_vm_perf(vm, vm_perf, vm_attrs)
+    vm_attrs.reverse_merge!(vm_perf.attributes.symbolize_keys)
+    vm_attrs.merge!(Metric::Processing.process_derived_columns(vm, vm_attrs))
+    vm_perf.update_attributes(vm_attrs)
+  end
+
   def vm_scan_affinity
     with_relationship_type("vm_scan_storage_affinity") { parents }
+  end
+
+  # is_available?
+  # Returns:  true or false
+  #
+  # The UI calls this method to determine if a feature is supported for this Storage
+  # and determines if a button should be displayed.  This method should return true
+  # even if a function is not 'currently' available due to some condition that is not
+  # being met.
+  def is_available?(request_type)
+    send("validate_#{request_type}")[:available]
+  end
+
+  # is_available_now_error_message
+  # Returns an error message string if there is an error.
+  # Returns nil to indicate no errors.
+  # This method is used by the UI along with the is_available? methods.
+  def is_available_now_error_message(request_type)
+    send("validate_#{request_type}")[:message]
+  end
+
+  def self.batch_operation_supported?(operation, ids)
+    Storage.where(:id => ids).all? { |s| s.public_send("validate_#{operation}")[:available] }
+  end
+
+  def validate_smartstate_analysis
+    return {:available => false, :message => "Smartstate Analysis cannot be performed on selected Datastore"} if ext_management_systems.blank? ||
+                                                     !ext_management_systems.first.kind_of?(ManageIQ::Providers::Vmware::InfraManager)
+    {:available => true,   :message => nil}
   end
 end

@@ -160,7 +160,7 @@ module ReportController::Reports
       @force_no_grid_xml   = true
       @gtl_type            = "list"
       @ajax_paging_buttons = true
-      @no_checkboxes = false
+      @no_checkboxes = !role_allows(:feature => "miq_report_saved_reports_admin", :any => true)
 
       if params[:ppsetting]                                             # User selected new per page value
         @items_per_page = params[:ppsetting].to_i                       # Set the new per page value
@@ -200,24 +200,6 @@ module ReportController::Reports
 
     @sb[:tree_typ]   = "reports"
     @right_cell_text = _("%{model} \"%{name}\"") % {:name => @miq_report.name, :model => ui_lookup(:model => "MiqReport")}
-  end
-
-  # Show the current report in text format
-  def show_text
-    @text = @report.to_text(100)
-    render :partial => "reports"
-  end
-
-  # Show the current report in csv format
-  def show_csv
-    @csv = @report.to_csv
-    render :partial => "reports"
-  end
-
-  # Show the current report in pdf format
-  def show_pdf
-    @pdf = @report.to_pdf
-    render :partial => "reports"
   end
 
   def rep_change_tab

@@ -56,7 +56,7 @@ class ConfigurationController < ApplicationController
       @refresh_div = "flash_msg_div"
     end
 
-    if params[:pressed].ends_with?("_edit") || params[:pressed].ends_with?("_copy")
+    if params[:pressed].ends_with?("_edit", "_copy")
       render :update do |page|
         page.redirect_to :action => @refresh_partial, :id => @redirect_id
       end
@@ -639,11 +639,11 @@ class ConfigurationController < ApplicationController
     :host             => %w(Infrastructure Hosts),
     :miqtemplate      => %w(Services Workloads Templates\ &\ Images),
     :storage          => %w(Infrastructure Datastores),
-    :templatecloud    => %w(Cloud Instances Images),
-    :templateinfra    => %w(Infrastructure Virtual\ Machines Templates),
     :vm               => %w(Services Workloads VMs\ &\ Instances),
-    :vmcloud          => %w(Cloud Instances Instances),
-    :vminfra          => %w(Infrastructure Virtual\ Machines VMs)
+    :"manageiq::providers::cloudmanager::template" => %w(Cloud Instances Images),
+    :"manageiq::providers::inframanager::template" => %w(Infrastructure Virtual\ Machines Templates),
+    :"manageiq::providers::cloudmanager::vm"       => %w(Cloud Instances Instances),
+    :"manageiq::providers::inframanager::vm"       => %w(Infrastructure Virtual\ Machines VMs)
   }
 
   def merge_in_user_settings(settings)

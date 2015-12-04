@@ -58,6 +58,9 @@ function miqOnLoad() {
       $('#search_text').focus();
     } catch (er) {}
   }
+
+  miqInitAccordions();
+  miqInitMainContent();
 }
 
 function miqPrepRightCellForm(tree) {
@@ -71,16 +74,15 @@ function miqPrepRightCellForm(tree) {
 
 // Things to be done on page resize
 function miqOnResize() {
-  if (typeof dhxLayoutB != "undefined") {
-    dhxLayoutB.setSizes();
-  }
+  $(window).resize(miqInitAccordions);
+  $(window).resize(miqInitMainContent);
   miqBrowserSizeTimeout();
 }
 
 // Initialize the widget pulldown on the dashboard
 function miqInitWidgetPulldown() {
-  $("#dashboard_dropdown #toolbar button:not(.dropdown-toggle), #toolbar ul.dropdown-menu > li > a").off('click');
-  $("#dashboard_dropdown #toolbar button:not(.dropdown-toggle), #toolbar ul.dropdown-menu > li > a").click(miqWidgetToolbarClick);
+  $("#dashboard_dropdown button:not(.dropdown-toggle), #toolbar ul.dropdown-menu > li > a").off('click');
+  $("#dashboard_dropdown button:not(.dropdown-toggle), #toolbar ul.dropdown-menu > li > a").on('click', miqWidgetToolbarClick);
 }
 
 function miqCalendarDateConversion(server_offset) {
@@ -404,7 +406,7 @@ function miqUpdateAllCheckboxes(button_div, override) {
       miqGridCheckAll(state);
       var crows = miqGridGetCheckedRows();
 
-      $('#miq_grid_checks').val(crows.join(','));
+      ManageIQ.gridChecks = crows;
       miqSetButtons(crows.length, button_div);
     }
   }
@@ -839,25 +841,12 @@ function miqEnterPressed(e) {
 }
 
 // Send login authentication via ajax
-function miqAjaxAuth(button) {
-  if (button == null) {
-    miqEnableLoginFields(false);
-    miqJqueryRequest(
-      '/dashboard/authenticate',
-      {beforeSend: true, data: miqSerializeForm('login_div')}
-    );
-  } else if (button == 'more' || button == 'back') {
-    miqJqueryRequest(
-      '/dashboard/authenticate?' +
-      miqSerializeForm('login_div') + '&button=' + button
-    );
-  } else {
-    miqEnableLoginFields(false);
-    miqAsyncAjax(
-      '/dashboard/authenticate?' +
-      miqSerializeForm('login_div') + '&button=' + button
-    );
-  }
+function miqAjaxAuth() {
+  miqEnableLoginFields(false);
+  miqJqueryRequest('/dashboard/authenticate', {
+    beforeSend: true,
+    data: miqSerializeForm('login_div'),
+  });
 }
 
 function miqEnableLoginFields(enabled) {
@@ -1308,10 +1297,11 @@ function miqToolbarOnClick(e) {
     }
   }
 
-  collect_log_buttons = [ 'support_vmdb_choice__collect_logs',
-                          'support_vmdb_choice__collect_current_logs',
-                          'support_vmdb_choice__zone_collect_logs',
-                          'support_vmdb_choice__zone_collect_current_logs'
+  var collect_log_buttons = [
+    'support_vmdb_choice__collect_logs',
+    'support_vmdb_choice__collect_current_logs',
+    'support_vmdb_choice__zone_collect_logs',
+    'support_vmdb_choice__zone_collect_current_logs'
   ];
   if (jQuery.inArray(button.attr('name'), collect_log_buttons) >= 0 && button.data('prompt')) {
     tb_url = miqSupportCasePrompt(tb_url);
@@ -1324,8 +1314,8 @@ function miqToolbarOnClick(e) {
   var params;
   if (button.data("url_parms")) {
     if (button.data('url_parms').match("_div$")) {
-      if (miqDomElementExists('miq_grid_checks')) {
-        params = "miq_grid_checks=" + $('#miq_grid_checks').val();
+      if (ManageIQ.gridChecks.length) {
+        params = "miq_grid_checks=" + ManageIQ.gridChecks.join(',');
       } else {
         params = miqSerializeForm(button.data('url_parms'));
       }
@@ -1380,4 +1370,30 @@ function miqWidgetToolbarClick(e) {
   } else {
     miqAjax("/dashboard/widget_add?widget=" + itemId);
   }
+}
+
+function miqInitAccordions() {
+  var height = $('#left_div').height();
+  var panel = $('.panel-heading').outerHeight();
+  var count = $('#accordion > .panel .panel-body').length;
+  $('#accordion > .panel .panel-body').each(function (k, v) {
+    $(v).css('max-height', (height - count * panel) + 'px');
+    $(v).css('overflow-y', 'auto')
+    $(v).css('overflow-x', 'hidden')
+  });
+}
+
+// Function to resize the main content for best fit between the toolbar & footer
+function miqInitMainContent() {
+  var toolbar = $('#toolbar');
+  var footer = $('#paging_div');
+  var height = 0;
+  if (footer.find('*:visible').length > 0) {
+    height += footer.outerHeight();
+  }
+  if (toolbar.find("*:visible").length > 0) {
+    height += toolbar.outerHeight();
+  }
+
+  $('#main-content').css('height', 'calc(100% - ' + height + 'px)')
 }

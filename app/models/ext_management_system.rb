@@ -110,7 +110,7 @@ class ExtManagementSystem < ActiveRecord::Base
            :port=,
            :to => :default_endpoint
 
-  alias_method :address, :hostname   # TODO: Remove all callers of address
+  alias_method :address, :hostname # TODO: Remove all callers of address
 
   virtual_column :ipaddress,               :type => :string,  :uses => :endpoints
   virtual_column :hostname,                :type => :string,  :uses => :endpoints
@@ -151,6 +151,10 @@ class ExtManagementSystem < ActiveRecord::Base
 
   def self.with_hostname(hostname)
     joins(:endpoints).where(:endpoints => {:hostname => hostname})
+  end
+
+  def self.with_port(port)
+    joins(:endpoints).where(:endpoints => {:port => port})
   end
 
   def self.create_discovered_ems(ost)
@@ -319,7 +323,7 @@ class ExtManagementSystem < ActiveRecord::Base
   end
 
   def self.ems_cloud_discovery_types
-    EMS_CLOUD_DISCOVERY_TYPES.values
+    EMS_CLOUD_DISCOVERY_TYPES
   end
 
   def disconnect_inv

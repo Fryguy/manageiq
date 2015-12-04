@@ -1,10 +1,15 @@
 .toolbar-pf#paging_div {
   border-top: 1px solid #c7c7c7;
+  height: 44px;
   background-image: linear-gradient(to bottom, #FAFAFA 0%, #EDEDED 100%);
 }
 
 .toolbar-pf#paging_div ul.pagination {
   margin: 0;
+}
+
+#main-content {
+  overflow: auto;
 }
 
 /* This media query makes the entire main row scrollable once the columns have collapsed */
@@ -16,10 +21,6 @@
   .scrollable-sm {
     height: 100% !important; //overrides the height calculations used to create the scrollable area
     overflow: auto;
-  }
-  #main_content {
-    overflow: auto;
-    height: 100%;
   }
 }
 
@@ -221,6 +222,11 @@ table.table.table-selectable tbody tr.selected td {
   width: 20px;
 }
 
+.form-horizontal.static .form-group .control-labelimage img{
+  height: 80px;
+  width: 80px;
+}
+
 /* Ensure .form-control-static doesn't change height when it's empty - Bootstrap fix #15699 */
 .form-control-static {
   min-height: ($line-height-computed + $font-size-small - 20);
@@ -323,4 +329,19 @@ iframe, .iframe {
 
 .selectWidth .dropdown-menu ul li{
   padding-right: 10px;
+}
+
+/* adds scrollbar to group switcher  */
+
+.scrollable-menu {
+  height: auto;
+  max-height: 400px;
+  overflow-x: hidden;
+}
+
+/* make it possible to drop a dashboard widget into a previously empty column */
+
+.db_widgets_target {
+  padding-top: 20px;  // same as .panel's margin-bottom
+  min-height: 78px; // .panel.height + (2 * 20px)
 }

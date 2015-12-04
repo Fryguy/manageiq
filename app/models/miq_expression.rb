@@ -571,7 +571,7 @@ class MiqExpression
 
     rt = rel_time.downcase
 
-    if rt.starts_with?("this") || rt.starts_with?("last")
+    if rt.starts_with?("this", "last")
       # Convert these into the time spec form: <value> <interval> Ago
       value, interval = rt.split
       rt = "#{value == "this" ? 0 : 1} #{interval} ago"
@@ -613,7 +613,7 @@ class MiqExpression
 
   def self.date_time_value_is_relative?(value)
     v = value.downcase
-    v.starts_with?("this") || v.starts_with?("last") || v.ends_with?("ago") || ["today", "yesterday", "now"].include?(v)
+    v.starts_with?("this", "last") || v.ends_with?("ago") || ["today", "yesterday", "now"].include?(v)
   end
 
   def to_sql(tz = nil)
@@ -911,11 +911,17 @@ class MiqExpression
   end
 
   def self.merge_where_clauses(*list)
-    l = list.compact.collect do |s|
+    list = list.compact.collect do |s|
       s = ActiveSupport::Deprecation.silence { MiqReport.send(:sanitize_sql_for_conditions, s) }
-      "(#{s})"
+    end.compact
+
+    if list.size == 0
+      nil
+    elsif list.size == 1
+      list.first
+    else
+      "(#{list.join(") AND (")})"
     end
-    l.empty? ? nil : l.join(" AND ")
   end
 
   def self.merge_includes(*incl_list)
@@ -1456,7 +1462,7 @@ class MiqExpression
     [:exp_available_fields, :exp_available_counts, :exp_available_finds].each { |what| miq_adv_search_lists(model, what) }
 
     # Build reporting lists
-    reporting_available_fields(model) unless model == model.ends_with?("Trend") || model.ends_with?("Performance") # Can't do trend/perf models at startup
+    reporting_available_fields(model) unless model == model.ends_with?("Trend", "Performance") # Can't do trend/perf models at startup
   end
 
   def self.miq_adv_search_lists(model, what)
@@ -1466,7 +1472,7 @@ class MiqExpression
     case what.to_sym
     when :exp_available_fields then @miq_adv_search_lists[model.to_s][:exp_available_fields] ||= MiqExpression.model_details(model, :typ => "field", :include_model => true)
     when :exp_available_counts then @miq_adv_search_lists[model.to_s][:exp_available_counts] ||= MiqExpression.model_details(model, :typ => "count", :include_model => true)
-    when :exp_available_finds  then @miq_adv_search_lists[model.to_s][:exp_available_finds] ||= MiqExpression.model_details(model, :typ => "find",  :include_model => true)
+    when :exp_available_finds  then @miq_adv_search_lists[model.to_s][:exp_available_finds]  ||= MiqExpression.model_details(model, :typ => "find",  :include_model => true)
     end
   end
 
@@ -1479,7 +1485,7 @@ class MiqExpression
       @reporting_available_fields[model.to_s] ||= {}
       @reporting_available_fields[model.to_s][interval.to_s] ||= MiqExpression.model_details(model, :include_model => false, :include_tags => true, :interval => interval)
     elsif model.to_s == "Chargeback"
-      @reporting_available_fields[model.to_s] ||= MiqExpression.model_details(model, :include_model => false, :include_tags => true).select { |c| c.last.ends_with?("_cost") || c.last.ends_with?("_metric") || c.last.ends_with?("-owner_name") }
+      @reporting_available_fields[model.to_s] ||= MiqExpression.model_details(model, :include_model => false, :include_tags => true).select { |c| c.last.ends_with?("_cost", "_metric", "-owner_name") }
     else
       @reporting_available_fields[model.to_s] ||= MiqExpression.model_details(model, :include_model => false, :include_tags => true)
     end
@@ -1496,7 +1502,12 @@ class MiqExpression
     result = {:columns => model.column_names_with_virtual, :parent => parent}
     result[:reflections] = {}
 
-    model.reflections_with_virtual.each do |assoc, ref|
+    refs = model.reflections_with_virtual
+    if model.try(:include_descendant_classes_in_expressions?)
+      model.descendants.each { |desc| refs.reverse_merge!(desc.reflections_with_virtual) }
+    end
+
+    refs.each do |assoc, ref|
       next unless @@include_tables.include?(assoc.to_s.pluralize)
       next if     assoc.to_s.pluralize == "event_logs" && parent[:root] == "Host" && !@@proto
       next if     assoc.to_s.pluralize == "processes" && parent[:root] == "Host" # Process data not available yet for Host

@@ -48,20 +48,24 @@ class VmScan < Job
         :server_guid => MiqServer.my_guid
       }
       inputs = {:vm => vm, :host => vm.host}
-      MiqEvent.raise_evm_job_event(vm, {:type => "scan", :suffix => "start"}, inputs, :miq_callback => cb)
+      if !MiqEvent.raise_evm_job_event(vm, {:type => "scan", :suffix => "start"}, inputs, :miq_callback => cb)
+        msg = "Aborted policy resolution - scan event was not raised to automate."
+        _log.error(msg)
+        signal(:abort, msg, "error")
+      end
     rescue => err
-      $log.log_backtrace(err)
+      _log.log_backtrace(err)
       signal(:abort, err.message, "error")
-      return
     rescue TimeoutError
-      $log.error("MIQ(scan-action-call_check_policy) #{msg}")
+      msg = "Request to check policy timed out"
+      _log.error(msg)
       signal(:abort, msg, "error")
     end
   end
 
   def check_policy_complete(status, message, result)
     unless status == 'ok'
-      $log.error("MIQ(scan-action-check_policy_complete) status = #{status}, message = #{message}")
+      _log.error("Status = #{status}, message = #{message}")
       signal(:abort, message, "error")
       return
     end
@@ -80,7 +84,7 @@ class VmScan < Job
   end
 
   def call_snapshot_create
-    $log.info "action-call_snapshot: Enter"
+    _log.info "Enter"
 
     begin
       vm = VmOrTemplate.find(target_id)
@@ -446,13 +450,13 @@ class VmScan < Job
       # Make sure we were given a host to connect to and have a non-nil encrypted password
       if miqVimHost && !miqVimHost[:password].nil?
         begin
-          miqVimHost[:password_decrypt] = MiqPassword.decrypt(miqVimHost[:password])
+          password_decrypt = MiqPassword.decrypt(miqVimHost[:password])
           if MiqServer.use_broker_for_embedded_proxy?(ems_type)
             $vim_broker_client ||= MiqVimBroker.new(:client, MiqVimBrokerWorker.drb_port)
-            miqVim = $vim_broker_client.getMiqVim(miqVimHost[:address], miqVimHost[:username], miqVimHost[:password_decrypt])
+            miqVim = $vim_broker_client.getMiqVim(miqVimHost[:address], miqVimHost[:username], password_decrypt)
           else
             require 'MiqVim'
-            miqVim = MiqVim.new(miqVimHost[:address], miqVimHost[:username], miqVimHost[:password_decrypt])
+            miqVim = MiqVim.new(miqVimHost[:address], miqVimHost[:username], password_decrypt)
           end
 
           vimVm = miqVim.getVimVm(vm.path)

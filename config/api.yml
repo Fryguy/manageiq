@@ -3,12 +3,12 @@
   :module: api
   :name: API
   :description: REST API
-  :version: '2.1.0'
+  :version: '2.2.0-pre'
 :version:
   :regex: !ruby/regexp /^v[0-9]+(?>\\.[0-9a-zA-Z]+)*(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?/
   :definitions:
-  - :name: '2.1.0'
-    :ident: 'v2.1.0'
+  - :name: '2.2.0-pre'
+    :ident: 'v2.2.0-pre'
 :method:
   :names:
   - :get
@@ -197,13 +197,13 @@
     :description: Groups
     :options:
     - :collection
-    :methods: *70174834086080
+    :methods: *70174834084700
     :klass: MiqGroup
     :subcollections:
     - :tags
     :collection_actions:
       :post:
-      - :name: add
+      - :name: create
         :identifier: rbac_group_add
       - :name: edit
         :identifier: rbac_group_edit
@@ -213,6 +213,8 @@
       :post:
       - :name: edit
         :identifier: rbac_group_edit
+      - :name: delete
+        :identifier: rbac_group_delete
       :delete:
       - :name: delete
         :identifier: rbac_group_delete
@@ -239,7 +241,6 @@
         :disabled: true
       - :name: edit
         :identifier: host_edit
-        :disabled: true
       - :name: refresh
         :identifier: host_refresh
         :disabled: true
@@ -268,7 +269,6 @@
       :post:
       - :name: edit
         :identifier: host_edit
-        :disabled: true
       - :name: refresh
         :identifier: host_refresh
         :disabled: true
@@ -921,22 +921,21 @@
     - :tags
     :collection_actions:
       :post:
-      - :name: add
+      - :name: create
         :identifier: rbac_user_add
-        :disabled: true
       - :name: edit
         :identifier: rbac_user_edit
       - :name: delete
         :identifier: rbac_user_delete
-        :disabled: true
     :resource_actions:
       :post:
       - :name: edit
         :identifier: rbac_user_edit
+      - :name: delete
+        :identifier: rbac_user_delete
       :delete:
       - :name: delete
         :identifier: rbac_user_delete
-        :disabled: true
     :tags_subcollection_actions:
       :post:
       - :name: assign

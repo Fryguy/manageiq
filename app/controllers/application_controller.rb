@@ -125,13 +125,6 @@ class ApplicationController < ActionController::Base
   end
   hide_action :render_exception
 
-  # Put out error msg if user's role is not authorized for an action
-  def auth_error
-    add_flash(_("The user is not authorized for this task or item."), :error)
-    add_flash(_("Press your browser's Back button or click a tab to continue"))
-    #   render(:text=>"User is not authorized for this task . . . press your browser's Back button to continue")
-  end
-
   def change_tab
     redirect_to(:action => params[:tab], :id => params[:id])
   end
@@ -702,7 +695,7 @@ class ApplicationController < ActionController::Base
   def build_audit_msg(new, current, msg_in)
     msg_arr = []
     new.each_key do |k|
-      if !(k.to_s.ends_with?("password2") || k.to_s.ends_with?("verify")) &&
+      if !k.to_s.ends_with?("password2", "verify") &&
          (current.nil? || (new[k] != current[k]))
         if password_field?(k) # Asterisk out password fields
           msg_arr << "#{k}:[*]#{' to [*]' unless current.nil?}"
@@ -846,7 +839,7 @@ class ApplicationController < ActionController::Base
     tp = TimeProfile.default_time_profile if tp.nil?
 
     if tp.nil? && !session[:time_profiles].blank?
-      first_id_in_hash = Array(session[:time_profiles].invert).sort_by(&:first).first.last
+      first_id_in_hash = Array(session[:time_profiles].invert).min_by(&:first).last
       tp = TimeProfile.find_by_id(first_id_in_hash)
     end
     tp
@@ -1533,7 +1526,7 @@ class ApplicationController < ActionController::Base
 
   # Common routine to find checked items on a page (checkbox ids are "check_xxx" where xxx is the item id or index)
   def find_checked_items(prefix = nil)
-    unless params[:miq_grid_checks].blank?
+    if !params[:miq_grid_checks].blank?
       return params[:miq_grid_checks].split(",").collect { |c| from_cid(c) }
     else
       prefix = "check" if prefix.nil?
@@ -1739,18 +1732,19 @@ class ApplicationController < ActionController::Base
 
     # Save the paged_view_search_options for download buttons to use later
     session[:paged_view_search_options] = {
-      :parent              => parent ? minify_ar_object(parent) : nil, # Make a copy of parent object (to avoid saving related objects)
-      :parent_method       => options[:parent_method],
-      :targets_hash        => true,
-      :association         => association,
-      :filter              => get_view_filter(options),
-      :sub_filter          => get_view_process_search_text(view),
-      :page                => options[:all_pages] ? 1 : @current_page,
-      :per_page            => options[:all_pages] ? ONE_MILLION : @items_per_page,
-      :where_clause        => get_view_where_clause(options),
-      :named_scope         => options[:named_scope],
-      :display_filter_hash => options[:display_filter_hash],
-      :userid              => session[:userid]
+      :parent                => parent ? minify_ar_object(parent) : nil, # Make a copy of parent object (to avoid saving related objects)
+      :parent_method         => options[:parent_method],
+      :targets_hash          => true,
+      :association           => association,
+      :filter                => get_view_filter(options),
+      :sub_filter            => get_view_process_search_text(view),
+      :page                  => options[:all_pages] ? 1 : @current_page,
+      :per_page              => options[:all_pages] ? ONE_MILLION : @items_per_page,
+      :where_clause          => get_view_where_clause(options),
+      :named_scope           => options[:named_scope],
+      :display_filter_hash   => options[:display_filter_hash],
+      :userid                => session[:userid],
+      :match_via_descendants => options[:match_via_descendants]
     }
     # Call paged_view_search to fetch records and build the view.table and additional attrs
     view.table, attrs = view.paged_view_search(session[:paged_view_search_options])
@@ -1963,12 +1957,8 @@ class ApplicationController < ActionController::Base
 
     render :update do |page|                        # Use RJS to update the display
       page.replace(:flash_msg_div, :partial => "layouts/flash_msg")           # Replace the flash message
-      page << "miqSetButtons(0,'center_tb');" # Reset the center toolbar
-      unless @layout == "dashboard" && ["show", "change_tab", "auth_error"].include?(@controller.action_name) ||
-             %w(about all_tasks all_ui_tasks configuration diagnostics miq_ae_automate_button
-                miq_ae_customization miq_ae_export miq_ae_logs miq_ae_tools miq_policy miq_policy_export
-                miq_policy_logs miq_request_ae miq_request_configured_system miq_request_host
-                miq_request_vm my_tasks my_ui_tasks report rss server_build).include?(@layout)
+      page << "miqSetButtons(0, 'center_tb');" # Reset the center toolbar
+      if layout_uses_listnav?
         page.replace(:listnav_div, :partial => "layouts/listnav")               # Replace accordion, if list_nav_div is there
       end
       if @grid_hash
@@ -2351,10 +2341,8 @@ class ApplicationController < ActionController::Base
       case controller_name
 
       # These controllers don't use breadcrumbs, see above get method to store URL
-      when "dashboard", "report", "support", "alert", "jobs", "ui_jobs", "miq_ae_tools", "miq_policy", "miq_action", "miq_capacity", "chargeback"
+      when "dashboard", "report", "support", "alert", "jobs", "ui_jobs", "miq_ae_tools", "miq_policy", "miq_action", "miq_capacity", "chargeback", "service"
 
-      when "service"
-        session[:tab_bc][:vs] = @breadcrumbs.dup if ["show", "show_list"].include?(action_name)
       when "ontap_storage_system", "ontap_logical_disk", "cim_base_storage_extent", "ontap_storage_volume", "ontap_file_share", "snia_local_file_system", "storage_manager"
         session[:tab_bc][:sto] = @breadcrumbs.dup if ["show", "show_list", "index"].include?(action_name)
       when "ems_cloud", "availability_zone", "flavor"
@@ -2618,4 +2606,5 @@ class ApplicationController < ActionController::Base
   def restful?
     false
   end
+  public :restful?
 end

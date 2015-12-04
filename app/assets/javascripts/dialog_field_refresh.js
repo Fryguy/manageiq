@@ -36,6 +36,8 @@ var dialogFieldRefresh = {
 
     $.post('dynamic_radio_button_refresh', {name: fieldName, checked_value: selectedValue}).done(function(data) {
       dialogFieldRefresh.addOptionsToDropDownList(data, fieldId);
+      $('#' + fieldName).selectpicker('refresh');
+      $('#' + fieldName).selectpicker('val', selectedValue);
     });
   },
 
@@ -60,7 +62,8 @@ var dialogFieldRefresh = {
       dropdownOptions.push(option);
     });
 
-    $('.dynamic-drop-down-' + fieldId).html(dropdownOptions);
+    $('.dynamic-drop-down-' + fieldId + '.selectpicker').html(dropdownOptions);
+    $('.dynamic-drop-down-' + fieldId + '.selectpicker').selectpicker('refresh');
 
     miqSparkle(false);
   },

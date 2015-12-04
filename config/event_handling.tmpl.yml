@@ -317,6 +317,7 @@ event_groups:
     - VM_WAS_SET_DOWN_DUE_TO_HOST_REBOOT_OR_MANUAL_FENCE
     - VM_RENAMED
     - hardware.ipmi.metrics.update
+    - POD_NODESELECTORMISMATCHING
     :detail: []
     :name: General Activity
   import_export:
@@ -529,11 +530,16 @@ event_groups:
     - compute.instance.unshelve.end
     - compute.instance.shelve_offload.end
     - NODE_REBOOT
+    - NODE_NODESCHEDULABLE
+    - NODE_NODENOTSCHEDULABLE
     - POD_SCHEDULED
     - POD_FAILEDSCHEDULING
+    - REPLICATOR_SUCCESSFULCREATE
+    - REPLICATOR_FAILEDCREATE
     - CONTAINER_CREATED
     - CONTAINER_KILLING
     - CONTAINER_STARTED
+    - CONTAINER_STOPPED
     :detail:
     - PowerOffVM_Task
     - PowerOffVM_Task_Complete
@@ -613,7 +619,13 @@ event_groups:
     - VmConfigMissingEvent
     - NODE_NODEREADY
     - NODE_NODENOTREADY
+    - NODE_FAILEDMOUNT
+    - NODE_INVALIDDISKCAPACITY
     - POD_FAILEDVALIDATION
+    - POD_DEADLINEEXCEEDED
+    - POD_FAILEDSYNC
+    - POD_INSUFFICIENTFREECPU
+    - CONTAINER_UNHEALTHY
     :detail:
     - DatacenterRenamedEvent
     - GeneralUserEvent
@@ -671,6 +683,8 @@ event_groups:
     - USER_UPDATE_STORAGE_POOL_FAILED
     - volume.create.end
     - volume.delete.end
+    - POD_OUTOFDISK
+    - POD_INSUFFICIENTFREEMEMORY
     :detail: []
     :name: Storage
 

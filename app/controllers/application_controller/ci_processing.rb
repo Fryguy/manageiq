@@ -92,7 +92,7 @@ module ApplicationController::CiProcessing
 
     @ownershipitems = @edit[:klass].find(@edit[:ownership_items]).sort_by(&:name) # Get the db records that are being tagged
     @view = get_db_view(@edit[:klass] == VmOrTemplate ? Vm : @edit[:klass])       # Instantiate the MIQ Report view object
-    @view.table = MiqFilter.records2table(@ownershipitems, :only => @view.cols + ['id'])
+    @view.table = MiqFilter.records2table(@ownershipitems, @view.cols + ['id'])
   end
 
   def ownership_field_changed
@@ -299,7 +299,7 @@ module ApplicationController::CiProcessing
     @retireitems = kls.find(session[:retire_items]).sort_by(&:name) # Get the db records
     build_targets_hash(@retireitems)
     @view = get_db_view(kls)              # Instantiate the MIQ Report view object
-    @view.table = MiqFilter.records2table(@retireitems, :only => @view.cols + ['id'])
+    @view.table = MiqFilter.records2table(@retireitems, @view.cols + ['id'])
     if @retireitems.length == 1 && !@retireitems[0].retires_on.nil?
       t = @retireitems[0].retires_on                                         # Single VM, set to current time
       w = @retireitems[0].retirement_warn if @retireitems[0].retirement_warn # Single VM, get retirement warn
@@ -761,8 +761,8 @@ module ApplicationController::CiProcessing
       if request.parameters[:controller] == 'ems_infra'
         @discover_type = ExtManagementSystem.ems_infra_discovery_types
       else
-        @discover_type = ExtManagementSystem.ems_cloud_discovery_types
-        @discover_type_selected = @discover_type.first
+        @discover_type = ExtManagementSystem.ems_cloud_discovery_types.invert.collect{ |type| [Dictionary.gettext(type[0], :type => :discover_types, :notfound => :titleize), type[1]]}
+        @discover_type_selected = @discover_type.first.last
       end
     else
       @discover_type = ExtManagementSystem.ems_infra_discovery_types
@@ -921,10 +921,10 @@ module ApplicationController::CiProcessing
         page << "$('#to_fourth').val('#{j_str(params[:to_fourth].gsub(/[\D]/, ""))}');"
       end
       if (request.parameters[:controller] == "ems_cloud" && params[:discover_type_selected]) || (params[:discover_type_ipmi] && params[:discover_type_ipmi].to_s == "1")
-        if params[:discover_type_selected] && params[:discover_type_selected] == ExtManagementSystem::EMS_CLOUD_DISCOVERY_TYPES['azure']
+        if params[:discover_type_selected] && params[:discover_type_selected] == 'azure'
           page << javascript_hide("discover_credentials")
           page << javascript_show("discover_azure_credentials")
-        elsif params[:discover_type_selected] && params[:discover_type_selected] == ExtManagementSystem::EMS_CLOUD_DISCOVERY_TYPES['amazon']
+        elsif params[:discover_type_selected] && params[:discover_type_selected] == 'amazon'
           page << javascript_hide("discover_azure_credentials")
           page << javascript_show("discover_credentials")
         else
@@ -1519,7 +1519,6 @@ module ApplicationController::CiProcessing
       EmsCluster.destroy_queue(clusters)
     else
       EmsCluster.find_all_by_id(clusters, :order => "lower(name)").each do |cluster|
-        id = cluster.id
         cluster_name = cluster.name
         begin
           cluster.send(task.to_sym) if cluster.respond_to?(task)    # Run the task
@@ -1547,7 +1546,6 @@ module ApplicationController::CiProcessing
       ResourcePool.destroy_queue(rps)
     else
       ResourcePool.find_all_by_id(rps, :order => "lower(name)").each do |rp|
-        id = rp.id
         rp_name = rp.name
         begin
           rp.send(task.to_sym) if rp.respond_to?(task)    # Run the task
@@ -1631,7 +1629,6 @@ module ApplicationController::CiProcessing
       Host.destroy_queue(hosts)
     else
       Host.where(:id => hosts).order("lower(name)").each do |host|
-        id = host.id
         host_name = host.name
         begin
           if host.respond_to?(task)  # Run the task
@@ -1764,7 +1761,6 @@ module ApplicationController::CiProcessing
       add_flash(_("%{task} initiated for %{count_model} from the CFME Database") % {:task => "Delete", :count_model => pluralize(storages.length, "Datastore")})
     else
       Storage.find_all_by_id(storages, :order => "lower(name)").each do |storage|
-        id = storage.id
         storage_name = storage.name
         begin
           if task == "scan"
@@ -1791,6 +1787,11 @@ module ApplicationController::CiProcessing
     # Either a list or coming from a different controller (eg from host screen, go to its storages)
     if @lastaction == "show_list" || @layout != "storage"
       storages = find_checked_items
+
+      if method == 'scan' && !Storage.batch_operation_supported?('smartstate_analysis', storages)
+        render_flash_not_applicable_to_model('Smartstate Analysis', ui_lookup(:tables => "storage"))
+        return
+      end
       if storages.empty?
         add_flash(_("No %{model} were selected for %{task}") % {:model => ui_lookup(:tables => "storage"), :task => display_name}, :error)
       else
@@ -1962,6 +1963,7 @@ module ApplicationController::CiProcessing
     when "#{pfx}_clone"                     then prov_redirect("clone")
     when "#{pfx}_migrate"                   then prov_redirect("migrate")
     when "#{pfx}_publish"                   then prov_redirect("publish")
+    when "#{pfx}_terminate"                 then terminatevms
     end
   end
 

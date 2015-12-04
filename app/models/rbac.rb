@@ -7,6 +7,7 @@ module Rbac
   CLASSES_THAT_PARTICIPATE_IN_RBAC = %w(
     AvailabilityZone
     CloudTenant
+    ConfigurationProfile
     ConfiguredSystem
     Container
     ContainerGroup
@@ -40,11 +41,13 @@ module Rbac
   )
 
   MATCH_VIA_DESCENDANT_RELATIONSHIPS = {
-    "VmOrTemplate::ExtManagementSystem" => :ext_management_system,
-    "VmOrTemplate::Host"                => :host,
-    "VmOrTemplate::EmsCluster"          => :ems_cluster,
-    "VmOrTemplate::EmsFolder"           => :parent_blue_folders,
-    "VmOrTemplate::ResourcePool"        => :resource_pool,
+    "VmOrTemplate::ExtManagementSystem"      => :ext_management_system,
+    "VmOrTemplate::Host"                     => :host,
+    "VmOrTemplate::EmsCluster"               => :ems_cluster,
+    "VmOrTemplate::EmsFolder"                => :parent_blue_folders,
+    "VmOrTemplate::ResourcePool"             => :resource_pool,
+    "ConfiguredSystem::ExtManagementSystem"  => :ext_management_system,
+    "ConfiguredSystem::ConfigurationProfile" => :configuration_profile
   }
 
   # These classes should accept any of the relationship_mixin methods including:
@@ -89,9 +92,7 @@ module Rbac
   end
 
   def self.apply_rbac_to_associated_class?(klass)
-    return false if klass == Metric
-    return false if klass == MetricRollup
-    return false if klass == VimPerformanceDaily
+    return false if [Metric, MetricRollup, VimPerformanceDaily].include?(klass)
     klass < MetricRollup || klass < Metric
   end
 
@@ -110,8 +111,7 @@ module Rbac
   end
 
   def self.get_self_service_objects(user_or_group, klass)
-    return nil unless user_or_group && user_or_group.self_service?
-    return nil unless klass.ancestors.include?(OwnershipMixin)
+    return nil if user_or_group.nil? || !user_or_group.self_service? || !(klass < OwnershipMixin)
 
     # Get the list of objects that are owned by the user or their LDAP group
     cond = user_or_group.limited_self_service? ? klass.conditions_for_owned(user_or_group) : klass.conditions_for_owned_or_group_owned(user_or_group)
@@ -277,7 +277,7 @@ module Rbac
   end
 
   def self.accessible_tenant_ids_strategy(klass)
-    TENANT_ACCESS_STRATEGY[klass.to_s]
+    TENANT_ACCESS_STRATEGY[klass.base_model.to_s]
   end
 
   def self.find_targets_with_rbac(klass, scope, rbac_filters, find_options = {}, user_or_group = nil)

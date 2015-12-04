@@ -96,9 +96,11 @@ class MiqGroup < ActiveRecord::Base
         group.group_type    = SYSTEM_GROUP
         group.tenant        = root_tenant
 
-        mode = group.new_record? ? "Created" : "Added"
-        group.save!
-        _log.info("#{mode} Group: #{group.description} with Role: #{user_role.name}")
+        if group.changed?
+          mode = group.new_record? ? "Created" : "Updated"
+          group.save!
+          _log.info("#{mode} Group: #{group.description} with Role: #{user_role.name}")
+        end
 
         seq += 1
       end
@@ -250,6 +252,13 @@ class MiqGroup < ActiveRecord::Base
 
   def self.non_tenant_groups
     where.not(:group_type => TENANT_GROUP)
+  end
+
+  def self.valid_filters?(filters_hash)
+    return true  unless filters_hash                  # nil ok
+    return false unless filters_hash.kind_of?(Hash)   # must be Hash
+    return true  if filters_hash.blank?               # {} ok
+    filters_hash["managed"].present? || filters_hash["belongsto"].present?
   end
 
   private

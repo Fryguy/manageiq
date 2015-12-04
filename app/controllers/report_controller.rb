@@ -141,7 +141,7 @@ class ReportController < ApplicationController
       return
     end
 
-    if role_allows(:feature => "miq_report_saved_reports")
+    if role_allows(:feature => "miq_report_saved_reports", :any => true)
       @trees << build_savedreports_tree
       @accords.push(:name => "savedreports", :title => "Saved Reports", :container => "savedreports_accord")
       @lists.push("savedreports_list")
@@ -311,7 +311,7 @@ class ReportController < ApplicationController
       end
     end
 
-    redirect_options[:message] = @flash_array.first.to_json
+    redirect_options[:message] = @flash_array.first
 
     redirect_to redirect_options
   end
@@ -985,7 +985,7 @@ class ReportController < ApplicationController
   end
 
   def get_session_data
-    @layout           = request.parameters[:action].starts_with?('usage') ? 'usage' : 'report'
+    @layout           = 'report'
     @lastaction       = session[:report_lastaction]
     @report_tab       = session[:report_tab]
     @report_result_id = session[:report_result_id]
@@ -995,6 +995,7 @@ class ReportController < ApplicationController
     @report_groups    = session[:report_groups]
     @edit             = session[:edit] unless session[:edit].nil?
     @catinfo          = session[:vm_catinfo]
+    @grid_folders     = session[:report_grid_folders]
   end
 
   def set_session_data
@@ -1009,6 +1010,7 @@ class ReportController < ApplicationController
     session[:report_result_id]  = @report_result_id
     session[:report_menu]       = @menu
     session[:report_folders]    = @folders
+    session[:report_grid_folders] = @grid_folders
   end
 
   def widget_import_service

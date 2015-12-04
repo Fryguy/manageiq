@@ -131,6 +131,12 @@ angular.module('topologyApp', ['kubernetesUI','ui.bootstrap'])
             case "Atomic":
                 class_name = "vendor-atomic";
                 break;
+            case "OpenshiftEnterprise":
+                class_name = "vendor-openshift_enterprise";
+                break;
+            case "AtomicEnterprise":
+                class_name = "vendor-atomic_enterprise";
+                break;
         }
         return class_name;
     }
@@ -141,6 +147,8 @@ angular.module('topologyApp', ['kubernetesUI','ui.bootstrap'])
             case "Kubernetes":
             case "Openshift":
             case "Atomic":
+            case "OpenshiftEnterprise":
+            case "AtomicEnterprise":
                 entity_url = "ems_container";
                 break;
             default :
@@ -155,6 +163,8 @@ angular.module('topologyApp', ['kubernetesUI','ui.bootstrap'])
             case "Kubernetes":
             case "Openshift":
             case "Atomic":
+            case "OpenshiftEnterprise":
+            case "AtomicEnterprise":
                 return { x: -20, y: -20, height: 40, width: 40, r: 28};
             case "Container" :
                 return { x: -7, y: -7,height: 14, width: 14, r: 13};

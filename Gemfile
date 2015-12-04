@@ -5,7 +5,7 @@ eval_gemfile(File.expand_path("gems/pending/Gemfile", __dir__))
 #
 
 gem "activerecord-deprecated_finders", "~>1.0.4",  :require => "active_record/deprecated_finders"
-gem "rails", :github => "rails/rails", :branch => "4-2-stable"
+gem "rails",                           "~>4.2.5"
 
 # Local gems
 path "gems/" do
@@ -111,7 +111,7 @@ unless ENV['APPLIANCE']
     gem "factory_girl",     "~>4.5.0",  :require => false
     gem "shoulda-matchers", "~>1.0.0",  :require => false
     gem "vcr",              "~>2.6",    :require => false
-    gem "webmock",                      :require => false
+    gem "webmock",          "~>1.12",   :require => false
   end
 
   group :development, :test do

@@ -52,8 +52,15 @@
     :title: Monitoring
     :text: Monitoring
     :items:
+    - :button: container_timeline
+      :image: timeline
+      :text: "Timelines"
+      :title: "Show Timelines for this Container"
+      :url: '/explorer'
+      :url_parms: '?display=timeline'
     - :button: container_perf
       :image: capacity
       :text: "Utilization"
       :title: "Show Capacity & Utilization data for this Container"
+      :url: '/explorer'
       :url_parms: '?display=performance'

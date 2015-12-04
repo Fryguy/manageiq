@@ -89,10 +89,10 @@ class StorageController < ApplicationController
     @edit = session[:edit]                                  # Restore @edit for adv search box
     params[:display] = @display if %w(all_vms vms hosts).include?(@display) # Were we displaying vms or hosts
 
-    if params[:pressed].starts_with?("vm_") || # Handle buttons from sub-items screen
-       params[:pressed].starts_with?("miq_template_") ||
-       params[:pressed].starts_with?("guest_") ||
-       params[:pressed].starts_with?("host_")
+    if params[:pressed].starts_with?("vm_", # Handle buttons from sub-items screen
+                                     "miq_template_",
+                                     "guest_",
+                                     "host_")
 
       scanhosts if params[:pressed] == "host_scan"
       analyze_check_compliance_hosts if params[:pressed] == "host_analyze_check_compliance"
@@ -151,7 +151,7 @@ class StorageController < ApplicationController
                                                    "#{pfx}_migrate", "#{pfx}_publish"].include?(params[:pressed])
       render_or_redirect_partial(pfx)
     else
-      if @refresh_div == "main_div" && @lastaction == "show_list"
+      if !flash_errors? && @refresh_div == "main_div" && @lastaction == "show_list"
         replace_gtl_main_div
       else
         render_flash

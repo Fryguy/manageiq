@@ -23,6 +23,14 @@ describe ApiController do
   let(:default_credentials) { {"userid" => "admin1", "password" => "password1"} }
   let(:metrics_credentials) { {"userid" => "admin2", "password" => "password2", "auth_type" => "metrics"} }
   let(:compound_credentials) { [default_credentials, metrics_credentials] }
+  let(:openshift_credentials) do
+    {
+      "auth_type" => "bearer",
+      "userid"    => "foo",
+      "password"  => "bar",
+      "auth_key"  => SecureRandom.hex
+    }
+  end
   let(:sample_vmware) do
     {
       "type"      => "ManageIQ::Providers::Vmware::InfraManager",
@@ -38,6 +46,15 @@ describe ApiController do
       "port"      => 5000,
       "hostname"  => "sample_rhevm.provider.com",
       "ipaddress" => "100.200.300.2"
+    }
+  end
+  let(:sample_openshift) do
+    {
+      "type"      => "ManageIQ::Providers::Openshift::ContainerManager",
+      "name"      => "sample openshift",
+      "port"      => "8443",
+      "hostname"  => "sample_openshift.provider.com",
+      "ipaddress" => "100.200.300.3",
     }
   end
 
@@ -108,6 +125,20 @@ describe ApiController do
       expect(ExtManagementSystem.exists?(provider_id)).to be_true
       endpoint = ExtManagementSystem.find(provider_id).default_endpoint
       expect_result_to_match_hash(endpoint.attributes, sample_rhevm.slice(*ENDPOINT_ATTRS))
+    end
+
+    it "supports openshift creation with auth_key specified" do
+      api_basic_authorize collection_action_identifier(:providers, :create)
+
+      run_post(providers_url, sample_openshift.merge("credentials" => [openshift_credentials]))
+
+      expect_request_success
+      expect_result_resource_keys_to_be_like_klass("results", "id", Integer)
+      expect_results_to_match_hash("results", [sample_openshift])
+
+      provider_id = @result["results"].first["id"]
+      expect(ExtManagementSystem.exists?(provider_id)).to be true
+      expect(ExtManagementSystem.find(provider_id)).to have(1).authentication
     end
 
     it "supports single provider creation via action" do

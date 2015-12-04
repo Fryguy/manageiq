@@ -82,6 +82,15 @@ module ApplicationHelper
     end
   end
 
+  def no_hover_class(item)
+    klass = if item[:link]
+              ""
+            elsif item.has_key?(:value)
+              "" if item[:value].kind_of?(Array) && item[:value].any? {|val| val[:link]}
+            end
+    klass.nil? ? 'no-hover' : ''
+  end
+
   # Check role based authorization for a UI task
   def role_allows(options = {})
     ApplicationHelper.role_allows_intern(options) rescue false
@@ -420,8 +429,8 @@ module ApplicationHelper
       title += ": Optimize"
     elsif layout.starts_with?("miq_request")
       title += ": Requests"
-    elsif layout.starts_with?("cim_") ||
-          layout.starts_with?("snia_")
+    elsif layout.starts_with?("cim_",
+                              "snia_")
       title += ": Storage - #{ui_lookup(:tables => layout)}"
     elsif layout == "login"
       title += ": Login"
@@ -584,7 +593,7 @@ module ApplicationHelper
   # Determine the type of report (performance/trend/chargeback) based on the model
   def model_report_type(model)
     if model
-      if model.ends_with?("Performance") || model.ends_with?("MetricsRollup")
+      if model.ends_with?("Performance", "MetricsRollup")
         return :performance
       elsif model == UiConstants::TREND_MODEL
         return :trend
@@ -610,6 +619,12 @@ module ApplicationHelper
       end
     end
     @show_taskbar
+  end
+
+  # checking if any of the toolbar is visible
+  def toolbars_visible?
+    (@toolbars['history_tb'] || @toolbars['center_tb'] || @toolbars['view_tb']) &&
+    (@toolbars['history_tb'] != 'blank_view_tb' && @toolbars['history_tb'] != 'blank_view_tb' && @toolbars['view_tb'] != 'blank_view_tb')
   end
 
   def inner_layout_present?
@@ -1082,10 +1097,7 @@ module ApplicationHelper
                      orchestration_stack repository resource_pool retired security_group service
                      snia_local_file_system storage storage_manager templates vm)
     (@lastaction == "show_list" && !session[:menu_click] && show_search.include?(@layout) && !@in_a_form) ||
-      (@explorer &&
-       x_tree &&
-       [:containers, :filter, :images, :instances, :providers, :vandt].include?(x_tree[:type]) &&
-       !@record)
+      (@explorer && x_tree && tree_with_advanced_search? && !@record)
   end
 
   def need_prov_dialogs?(type)
@@ -1261,12 +1273,14 @@ module ApplicationHelper
     @my_server ||= MiqServer.my_server(true)
   end
 
-  def vm_explorer_tree?
-    [:filter, :images, :instances, :templates_images_filter, :vandt, :vms_instances_filter].include?(x_tree[:type])
+  def tree_with_advanced_search?
+    %i(containers images instances providers vandt
+     images_filter instances_filter templates_filter templates_images_filter containers_filter
+     vms_filter vms_instances_filter).include?(x_tree[:type])
   end
 
   def show_advanced_search?
-    x_tree && ((vm_explorer_tree? && !@record) || @show_adv_search)
+    x_tree && ((tree_with_advanced_search? && !@record) || @show_adv_search)
   end
 
   def listicon_image_tag(db, row)

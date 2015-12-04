@@ -650,20 +650,8 @@ module ApplicationController::Filter
         if s.save
           #         AuditEvent.success(build_created_audit(s, s_old))
           add_flash(_("%{model} \"%{name}\" was saved") % {:model => "#{ui_lookup(:model => @edit[@expkey][:exp_model])} search", :name => @edit[:new_search_name]})
-          # converting expressions into Array here, so Global views can be oushed into it and be shown on the top with Global Prefix in load pull down
-          global_expressions = MiqSearch.get_expressions(:db          => @edit[@expkey][:exp_model],
-                                                         :search_type => "global")
-          @edit[@expkey][:exp_search_expressions] = MiqSearch.get_expressions(:db          => @edit[@expkey][:exp_model],
-                                                                              :search_type => "user",
-                                                                              :search_key  => session[:userid])      # Rebuild the list of searches
-          @edit[@expkey][:exp_search_expressions] = Array(@edit[@expkey][:exp_search_expressions]).sort
-          global_expressions = Array(global_expressions).sort unless global_expressions.blank?
-          unless global_expressions.blank?
-            global_expressions.each_with_index do |ge, i|
-              global_expressions[i][0] = "Global - #{ge[0]}"
-              @edit[@expkey][:exp_search_expressions] = @edit[@expkey][:exp_search_expressions].unshift(global_expressions[i])
-            end
-          end
+          adv_search_build_lists
+
           @edit[@expkey][:exp_last_loaded] = {:id => s.id, :name => s.name, :description => s.description, :typ => s.search_type}     # Save the last search loaded (saved)
           # @edit[@expkey][:selected] = @edit[@expkey][:exp_last_loaded] = {:id=>s.id, :name=>s.name, :description=>s.description, :typ=>s.search_type}      # Save the last search loaded (saved)
           @edit[:new_search_name] = @edit[:adv_search_name] = @edit[@expkey][:exp_last_loaded][:description]
@@ -725,20 +713,9 @@ module ApplicationController::Filter
                  :userid       => session[:userid]}
         AuditEvent.success(audit)
       end
-      # converting expressions into Array here, so Global views can be oushed into it and be shown on the top with Global Prefix in load pull down
-      global_expressions = MiqSearch.get_expressions(:db          => @edit[@expkey][:exp_model],
-                                                     :search_type => "global")
-      @edit[@expkey][:exp_search_expressions] = MiqSearch.get_expressions(:db          => @edit[@expkey][:exp_model],
-                                                                          :search_type => "user",
-                                                                          :search_key  => session[:userid])      # Rebuild the list of searches
-      @edit[@expkey][:exp_search_expressions] = Array(@edit[@expkey][:exp_search_expressions]).sort
-      global_expressions = Array(global_expressions).sort unless global_expressions.blank?
-      unless global_expressions.blank?
-        global_expressions.each_with_index do |ge, i|
-          global_expressions[i][0] = "Global - #{ge[0]}"
-          @edit[@expkey][:exp_search_expressions] = @edit[@expkey][:exp_search_expressions].unshift(global_expressions[i])
-        end
-      end
+
+      adv_search_build_lists
+
     when "reset"
       add_flash(_("The current search details have been reset"), :warning)
 
@@ -792,7 +769,9 @@ module ApplicationController::Filter
         if "cs_filter_tree" == x_active_tree.to_s
           build_foreman_tree(:filter, x_active_tree)
         else
-          build_vm_tree(:filter, x_active_tree) # Rebuild active VM filter tree
+          tree_type = x_active_tree.to_s.sub(/_tree/, '').to_sym
+          builder = TreeBuilder.class_for_type(tree_type)
+          tree = builder.new(x_active_tree, tree_type, @sb)
         end
       else
         build_listnav_search_list(@edit[@expkey][:exp_model])
@@ -813,11 +792,14 @@ module ApplicationController::Filter
 
       if ["delete", "saveit"].include?(params[:button])
         if @edit[:in_explorer]
-          tree = x_active_tree.to_s
-          if "cs_filter_tree" == tree
-            page.replace_html("#{tree}_div", :partial => "provider_foreman/#{tree}")
+          tree_name = x_active_tree.to_s
+          if "cs_filter_tree" == tree_name
+            page.replace_html("#{tree_name}_div", :partial => "provider_foreman/#{tree_name}")
           else
-            page.replace_html("#{tree}_div", :partial => "vm_common/#{tree}")
+            page.replace_html("#{tree_name}_div", :partial => "shared/tree", :locals => {
+              :tree => tree,
+              :name => tree_name
+            })
           end
         else
           page.replace(:listnav_div, :partial => "layouts/listnav")
@@ -1639,21 +1621,23 @@ module ApplicationController::Filter
 
   # Build the pulldown lists for the adv search box
   def adv_search_build_lists
-    # converting expressions into Array here, so Global views can be pushed into it and be shown on the top with Global Prefix in load pull down
-    global_expressions = MiqSearch.get_expressions(:db          => @edit[@expkey][:exp_model],
-                                                   :search_type => "global")
-    @edit[@expkey][:exp_search_expressions] = MiqSearch.get_expressions(:db          => @edit[@expkey][:exp_model],
-                                                                        :search_type => "user",
-                                                                        :search_key  => session[:userid])
-    @edit[@expkey][:exp_search_expressions] = Array(@edit[@expkey][:exp_search_expressions]).sort
-    global_expressions = Array(global_expressions).sort unless global_expressions.blank?
-    unless global_expressions.blank?
-      global_expressions.each_with_index do |ge, i|
-        global_expressions[i][0] = "Global - #{ge[0]}"
-        @edit[@expkey][:exp_search_expressions] = @edit[@expkey][:exp_search_expressions].unshift(global_expressions[i])
-      end
-    end
+    db = @edit[@expkey][:exp_model]
+    global_expressions = MiqSearch.get_expressions(
+      :db          => db,
+      :search_type => "global"
+    )
+    user_expressions = MiqSearch.get_expressions(
+      :db          => db,
+      :search_type => "user",
+      :search_key  => session[:userid]
+    )
+
+    user_expressions = Array(user_expressions).sort
+    global_expressions = Array(global_expressions).sort
+    global_expressions.each { |ge| ge[0] = "Global - #{ge[0]}" }
+    @edit[@expkey][:exp_search_expressions] = global_expressions + user_expressions
   end
+  private :adv_search_build_lists
 
   # Build a string from an array of expression symbols by recursively traversing the MiqExpression object
   #   and inserting sequential tokens for each expression part

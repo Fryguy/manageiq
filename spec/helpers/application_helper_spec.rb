@@ -1452,8 +1452,8 @@ describe ApplicationHelper do
     end
   end
 
-  context "#vm_explorer_tree?" do
-    it 'should return true for VM explorer trees' do
+  context "#tree_with_advanced_search?" do
+    it 'should return true for explorer trees with advanced search' do
       controller.instance_variable_set(:@sb,
                                        :active_tree => :vms_instances_filter_tree,
                                        :trees       => {
@@ -1463,11 +1463,11 @@ describe ApplicationHelper do
                                          }
                                        }
                                       )
-      result = helper.vm_explorer_tree?
+      result = helper.tree_with_advanced_search?
       result.should be_true
     end
 
-    it 'should return false for non-VM explorer trees' do
+    it 'should return false for tree w/o advanced search' do
       controller.instance_variable_set(:@sb,
                                        :active_tree => :reports_tree,
                                        :trees       => {
@@ -1477,8 +1477,32 @@ describe ApplicationHelper do
                                          }
                                        }
                                       )
-      result = helper.vm_explorer_tree?
+      result = helper.tree_with_advanced_search?
       result.should be_false
+    end
+  end
+
+  context "#show_adv_search?" do
+    it 'should return false for explorer screen with no trees such as automate/simulation' do
+      controller.instance_variable_set(:@explorer, true)
+      controller.instance_variable_set(:@sb, {})
+      result = helper.show_adv_search?
+      result.should be_false
+    end
+
+    it 'should return true for VM explorer trees' do
+      controller.instance_variable_set(:@explorer, true)
+      controller.instance_variable_set(:@sb,
+                                       :active_tree => :vms_instances_filter_tree,
+                                       :trees       => {
+                                         :vms_instances_filter_tree => {
+                                           :tree => :vms_instances_filter_tree,
+                                           :type => :vms_instances_filter
+                                         }
+                                       }
+      )
+      result = helper.show_adv_search?
+      result.should be_true
     end
   end
 

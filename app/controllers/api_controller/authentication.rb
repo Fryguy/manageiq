@@ -21,6 +21,7 @@ class ApiController
     # REST APIs Authenticator and Redirector
     #
     def require_api_user_or_token
+      log_request_initiated
       @auth_token = @auth_user = nil
       if request.env.key?('HTTP_X_AUTH_TOKEN')
         @auth_token  = request.env['HTTP_X_AUTH_TOKEN']
@@ -50,6 +51,22 @@ class ApiController
           request_http_basic_authentication
         end
       end
+      log_api_auth
+    end
+
+    def auth_identity
+      user  = @auth_user_obj
+      group = user.current_group
+      {
+        :userid     => user.userid,
+        :name       => user.name,
+        :user_href  => "#{@req[:api_prefix]}/users/#{user.id}",
+        :group      => group.description,
+        :group_href => "#{@req[:api_prefix]}/groups/#{group.id}",
+        :role       => group.miq_user_role_name,
+        :tenant     => group.tenant.name,
+        :groups     => user.miq_groups.pluck(:description)
+      }
     end
 
     def userid_to_userobj(userid)

@@ -40,4 +40,74 @@ module MiqAeServiceSpec
       end
     end
   end
+
+  describe MiqAeService do
+    context "#service_model" do
+      let(:miq_ae_service) { MiqAeService.new(double('ws', :persist_state_hash => {})) }
+      let(:prefix) { "MiqAeMethodService::MiqAeService" }
+
+      it "loads base model" do
+        expect(miq_ae_service.service_model(:VmOrTemplate)).to   be(MiqAeMethodService::MiqAeServiceVmOrTemplate)
+        expect(miq_ae_service.service_model(:vm_or_template)).to be(MiqAeMethodService::MiqAeServiceVmOrTemplate)
+      end
+
+      it "loads sub-classed model" do
+        expect(miq_ae_service.service_model(:Vm)).to be(MiqAeMethodService::MiqAeServiceVm)
+        expect(miq_ae_service.service_model(:vm)).to be(MiqAeMethodService::MiqAeServiceVm)
+      end
+
+      it "loads model with mapped name" do
+        expect(miq_ae_service.service_model(:ems)).to be(MiqAeMethodService::MiqAeServiceExtManagementSystem)
+      end
+
+      it "loads name-spaced model by mapped name" do
+        MiqAeMethodService::Deprecation.silence do
+          expect(miq_ae_service.service_model(:ems_openstack)).to be(
+            MiqAeMethodService::MiqAeServiceManageIQ_Providers_Openstack_CloudManager)
+          expect(miq_ae_service.service_model(:vm_openstack)).to  be(
+            MiqAeMethodService::MiqAeServiceManageIQ_Providers_Openstack_CloudManager_Vm)
+        end
+      end
+
+      it "loads name-spaced model by fully-qualified name" do
+        expect(miq_ae_service.service_model(:ManageIQ_Providers_Openstack_CloudManager)).to    be(
+          MiqAeMethodService::MiqAeServiceManageIQ_Providers_Openstack_CloudManager)
+        expect(miq_ae_service.service_model(:ManageIQ_Providers_Openstack_CloudManager_Vm)).to be(
+          MiqAeMethodService::MiqAeServiceManageIQ_Providers_Openstack_CloudManager_Vm)
+      end
+
+      it "raises error on invalid service_model name" do
+        expect { miq_ae_service.service_model(:invalid_model) }.to raise_error(NameError)
+      end
+
+      it "loads all mapped models" do
+        MiqAeMethodService::MiqAeService::LEGACY_MODEL_NAMES.values.each do |model_name|
+          expect { "MiqAeMethodService::MiqAeService#{model_name}".constantize }.to_not raise_error
+        end
+      end
+
+      it "loads cloud networks" do
+        items = %w(
+          ManageIQ_Providers_Openstack_CloudManager_CloudNetwork
+          ManageIQ_Providers_Openstack_CloudManager_CloudNetwork_Private
+          ManageIQ_Providers_Openstack_CloudManager_CloudNetwork_Public
+          ManageIQ_Providers_Openstack_InfraManager_CloudNetwork
+          ManageIQ_Providers_Openstack_InfraManager_CloudNetwork_Private
+          ManageIQ_Providers_Openstack_InfraManager_CloudNetwork_Public
+        )
+        items.each do |name|
+          expect(miq_ae_service.vmdb(name)).to be("#{prefix}#{name}".constantize)
+        end
+      end
+
+      it "cache object references" do
+        FactoryGirl.create(:vm_vmware)
+        FactoryGirl.create(:vm_vmware)
+
+        vms = miq_ae_service.vmdb('vm').find(:all)
+        cache = miq_ae_service.instance_variable_get(:@drb_server_references)
+        expect(cache.any? { |x| x.object_id == vms.object_id }).to be_true
+      end
+    end
+  end
 end

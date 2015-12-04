@@ -67,13 +67,13 @@ class Host < ActiveRecord::Base
   has_many                  :miq_events, :as => :target, :dependent => :destroy
 
   has_many                  :filesystems, :as => :resource, :dependent => :destroy
-  has_many                  :directories, -> { where("rsc_type = 'dir'") }, :as => :resource, :class_name => "Filesystem"
-  has_many                  :files,       -> { where("rsc_type = 'file'") }, :as => :resource, :class_name => "Filesystem"
+  has_many                  :directories, -> { where(:rsc_type => 'dir') },  :as => :resource, :class_name => "Filesystem"
+  has_many                  :files,       -> { where(:rsc_type => 'file') }, :as => :resource, :class_name => "Filesystem"
 
   # Accounts - Users and Groups
   has_many                  :accounts, :dependent => :destroy
-  has_many                  :users, -> { where("accttype = 'user'") }, :class_name => "Account", :foreign_key => "host_id"
-  has_many                  :groups, -> { where("accttype = 'group'") }, :class_name => "Account", :foreign_key => "host_id"
+  has_many                  :users,  -> { where(:accttype => 'user') },  :class_name => "Account", :foreign_key => "host_id"
+  has_many                  :groups, -> { where(:accttype => 'group') }, :class_name => "Account", :foreign_key => "host_id"
 
   has_many                  :advanced_settings, :as => :resource, :dependent => :destroy
 
@@ -87,6 +87,8 @@ class Host < ActiveRecord::Base
 
   # TODO: Remove all callers of address
   alias_attribute :address, :hostname
+  alias_attribute :state,   :power_state
+  alias_attribute :to_s,    :name
 
   def settings
     super || self.settings = VMDB::Config.new("hostdefaults").get(:host)
@@ -99,7 +101,7 @@ class Host < ActiveRecord::Base
   include EventMixin
 
   include CustomAttributeMixin
-  has_many :ems_custom_attributes, -> { where("source = 'VC'") }, :as => :resource, :dependent => :destroy, :class_name => "CustomAttribute"
+  has_many :ems_custom_attributes, -> { where(:source => 'VC') }, :as => :resource, :dependent => :destroy, :class_name => "CustomAttribute"
   has_many :filesystems_custom_attributes, :through => :filesystems, :source => 'custom_attributes'
 
   acts_as_miq_taggable
@@ -174,12 +176,12 @@ class Host < ActiveRecord::Base
   before_create :make_smart
   after_save    :process_events
 
-  def authentication_check_role
-    'smartstate'
+  def self.include_descendant_classes_in_expressions?
+    true
   end
 
-  def to_s
-    name
+  def authentication_check_role
+    'smartstate'
   end
 
   def v_annotation
@@ -647,18 +649,6 @@ class Host < ActiveRecord::Base
   def is_vmware_esxi?
     product = vmm_product.to_s.strip.downcase
     is_vmware? && product.starts_with?('esx') && product.ends_with?('i')
-  end
-
-  def state
-    power_state
-  end
-
-  def state=(new_state)
-    return if power_state == new_state
-
-    # state_changed_on = Time.now.utc
-    # previous_state = power_state
-    self.power_state = new_state
   end
 
   def self.lookUpHost(hostname, ipaddr, opts = {})
@@ -1930,19 +1920,18 @@ class Host < ActiveRecord::Base
   end
 
   def self.node_types
-    return :mixed_hosts if count_of_openstack_hosts > 0 && count_of_non_openstack_hosts > 0
-    return :openstack   if count_of_openstack_hosts > 0
-    :non_openstack
+    return :non_openstack unless openstack_hosts_exists?
+    non_openstack_hosts_exists? ? :mixed_hosts : :openstack
   end
 
-  def self.count_of_openstack_hosts
+  def self.openstack_hosts_exists?
     ems = ManageIQ::Providers::Openstack::InfraManager.pluck(:id)
-    Host.where(:ems_id => ems).count
+    ems.empty? ? false : Host.where(:ems_id => ems).exists?
   end
 
-  def self.count_of_non_openstack_hosts
+  def self.non_openstack_hosts_exists?
     ems = ManageIQ::Providers::Openstack::InfraManager.pluck(:id)
-    Host.where(Host.arel_table[:ems_id].not_in(ems)).count
+    Host.where.not(:ems_id => ems).exists?
   end
 
   def openstack_host?

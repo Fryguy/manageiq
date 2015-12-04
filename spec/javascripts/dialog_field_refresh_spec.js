@@ -4,7 +4,7 @@ describe('dialogFieldRefresh', function() {
 
     beforeEach(function() {
       var html = "";
-      html += '<select class="dynamic-drop-down-345">';
+      html += '<select class="dynamic-drop-down-345 selectpicker">';
       html += '</select>';
       setFixtures(html);
     });
@@ -24,7 +24,7 @@ describe('dialogFieldRefresh', function() {
 
         it('selects the option that corresponds to the checked value', function() {
           dialogFieldRefresh.addOptionsToDropDownList(data, 345);
-          expect($('.dynamic-drop-down-345').val()).toBe('123');
+          expect($('.dynamic-drop-down-345.selectpicker').val()).toBe('123');
         });
       });
     });
@@ -36,7 +36,7 @@ describe('dialogFieldRefresh', function() {
 
       it('selects the first option', function() {
         dialogFieldRefresh.addOptionsToDropDownList(data, 345);
-        expect($('.dynamic-drop-down-345').val()).toBe('test');
+        expect($('.dynamic-drop-down-345.selectpicker').val()).toBe('test');
       });
     });
   });
@@ -45,6 +45,7 @@ describe('dialogFieldRefresh', function() {
     beforeEach(function() {
       spyOn(dialogFieldRefresh, 'addOptionsToDropDownList');
 
+      spyOn($.fn, 'selectpicker');
       spyOn($, 'post').and.callFake(function() {
         var d = $.Deferred();
         d.resolve("the data");
@@ -55,6 +56,21 @@ describe('dialogFieldRefresh', function() {
     it('calls addOptionsToDropDownList', function() {
       dialogFieldRefresh.refreshDropDownList('abc', 123, 'test');
       expect(dialogFieldRefresh.addOptionsToDropDownList).toHaveBeenCalledWith("the data", 123);
+    });
+
+    it('ensures the select picker is refreshed', function() {
+      dialogFieldRefresh.refreshDropDownList('abc', 123, 'test');
+      expect($.fn.selectpicker).toHaveBeenCalledWith('refresh');
+    });
+
+    it('sets the value in the select picker', function() {
+      dialogFieldRefresh.refreshDropDownList('abc', 123, 'test');
+      expect($.fn.selectpicker).toHaveBeenCalledWith('val', 'test');
+    });
+
+    it('uses the correct selector', function() {
+      dialogFieldRefresh.refreshDropDownList('abc', 123, 'test');
+      expect($.fn.selectpicker.calls.mostRecent().object.selector).toEqual('#abc');
     });
   });
 });

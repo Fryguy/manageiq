@@ -29,6 +29,22 @@ module ManageIQ::Providers
       @storage_service            = @os_handle.detect_storage_service
       @identity_service           = @os_handle.identity_service
       @orchestration_service      = @os_handle.detect_orchestration_service
+
+      validate_required_services
+    end
+
+    def validate_required_services
+      unless @identity_service
+        raise MiqException::MiqOpenstackKeystoneServiceMissing, "Required service Keystone is missing in the catalog."
+      end
+
+      unless @compute_service
+        raise MiqException::MiqOpenstackNovaServiceMissing, "Required service Nova is missing in the catalog."
+      end
+
+      unless @image_service
+        raise MiqException::MiqOpenstackGlanceServiceMissing, "Required service Glance is missing in the catalog."
+      end
     end
 
     def ems_inv_to_hashes
@@ -69,6 +85,18 @@ module ManageIQ::Providers
       @servers ||= @connection.handled_list(:servers)
     end
 
+    def availability_zones_compute
+      @availability_zones_compute ||= @connection.availability_zones
+    end
+
+    def availability_zones_volume
+      @availability_zones_volume ||= @volume_service.availability_zones
+    end
+
+    def availability_zones
+      @availability_zones ||= availability_zones_compute + availability_zones_volume
+    end
+
     def volumes
       # TODO: support volumes through :nova as well?
       return [] unless @volume_service.name == :cinder
@@ -86,9 +114,7 @@ module ManageIQ::Providers
     end
 
     def get_availability_zones
-      azs = servers.collect(&:availability_zone)
-      azs.concat(volumes.collect(&:availability_zone)).compact!
-      azs.uniq!
+      azs = availability_zones
       azs << nil # force the null availability zone for openstack
       process_collection(azs, :availability_zones) { |az| parse_availability_zone(az) }
     end
@@ -180,7 +206,7 @@ module ManageIQ::Providers
           :ems_ref => uid
         }
       else
-        uid = name = az
+        uid = name = az.zoneName
         new_result = {
           :type    => "ManageIQ::Providers::Openstack::CloudManager::AvailabilityZone",
           :ems_ref => uid,
@@ -269,6 +295,10 @@ module ManageIQ::Providers
 
     def self.network_port_type
       "ManageIQ::Providers::Openstack::CloudManager::NetworkPort"
+    end
+
+    def self.miq_template_type
+      "ManageIQ::Providers::Openstack::CloudManager::Template"
     end
 
     def parse_volume(volume)

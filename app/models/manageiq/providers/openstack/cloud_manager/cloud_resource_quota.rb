@@ -11,7 +11,7 @@ class ManageIQ::Providers::Openstack::CloudManager::CloudResourceQuota < ::Cloud
     Hardware.joins(:vm)
       .where(:vms => {:cloud_tenant_id => cloud_tenant_id})
       .where("vms.#{VMS_POWER_FILTER}")
-      .sum(:numvcpus)
+      .sum(:cpu_total_cores)
   end
 
   def instances_quota_used
@@ -35,7 +35,7 @@ class ManageIQ::Providers::Openstack::CloudManager::CloudResourceQuota < ::Cloud
 
   # neutron
   def floatingip_quota_used
-    FloatingIp.where(:cloud_tenant_id => cloud_tenant_id).count
+    ::FloatingIp.where(:cloud_tenant_id => cloud_tenant_id).count
   end
 
   # nova

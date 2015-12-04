@@ -168,34 +168,10 @@
         :description: Add Atomic Catalog Item
         :feature_type: admin
         :identifier: atomic_catalogitem_new
-      - :name: Add a new Button Group
-        :description: Add a new Button Group
-        :feature_type: admin
-        :identifier: ab_group_new
-      - :name: Edit Button Group
-        :description: Edit Button Group
-        :feature_type: admin
-        :identifier: ab_group_edit
-      - :name: Remove Button Group
-        :description: Remove Button Group
-        :feature_type: admin
-        :identifier: ab_group_delete
-      - :name: Add a new Button
-        :description: Add a new Button
-        :feature_type: admin
-        :identifier: ab_button_new
       - :name: Edit Button
         :description: Edit Button
         :feature_type: admin
         :identifier: ab_button_edit
-      - :name: Remove Button
-        :description: Remove Button
-        :feature_type: admin
-        :identifier: ab_button_delete
-      - :name: Reorder Buttons and Groups
-        :description: Reorder Buttons and Groups
-        :feature_type: admin
-        :identifier: ab_group_reorder
     - :name: Operate
       :description: Perform Operations on Catalog Items
       :feature_type: control
@@ -983,6 +959,10 @@
     :feature_type: node
     :identifier: miq_report_saved_reports
     :children:
+    - :name: View
+      :description: View Saved Reports
+      :feature_type: admin
+      :identifier: miq_report_saved_reports_view
     - :name: Modify
       :description: Modify Saved Reports
       :feature_type: admin
@@ -1799,16 +1779,6 @@
           :feature_type: admin
           :hidden: true
           :identifier: ab_group_new
-        - :name: Add Button
-          :description: Add Buttons
-          :feature_type: admin
-          :hidden: true
-          :identifier: ab_button_new
-        - :name: Edit
-          :description: Edit Buttons
-          :feature_type: admin
-          :hidden: true
-          :identifier: ab_group_edit
         - :name: Delete
           :description: Delete Buttons
           :feature_type: admin
@@ -3219,6 +3189,10 @@
       :description: Display Individual Container Replicators
       :feature_type: view
       :identifier: container_replicator_show
+    - :name: Timeline
+      :description: Display Timelines for container Replicators
+      :feature_type: view
+      :identifier: container_replicator_timeline
   - :name: Modify
     :description: Modify Container Nodes
     :feature_type: admin
@@ -3463,6 +3437,10 @@
         :description: Display Lists of Containers
         :feature_type: view
         :identifier: container_show_list
+      - :name: Timeline
+        :description: Display Timelines for Containers
+        :feature_type: view
+        :identifier: container_timeline
     - :name: Modify
       :description: Modify Containers
       :feature_type: admin
@@ -3662,10 +3640,22 @@
         :description: Power Off Instance
         :feature_type: control
         :identifier: instance_stop
+      - :name: Pause
+        :description: Pause Instance
+        :feature_type: control
+        :identifier: instance_pause
       - :name: Suspend
         :description: Suspend Instance
         :feature_type: control
         :identifier: instance_suspend
+      - :name: Shelve
+        :description: Shelve Instance
+        :feature_type: control
+        :identifier: instance_shelve
+      - :name: Shelve Offload
+        :description: Shelve Offload Instance
+        :feature_type: control
+        :identifier: instance_shelve_offload
       - :name: Reset
         :description: Reset Instance
         :feature_type: control

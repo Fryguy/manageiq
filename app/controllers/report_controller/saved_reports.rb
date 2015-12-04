@@ -118,6 +118,7 @@ module ReportController::SavedReports
 
     @sortcol = session["#{x_active_tree}_sortcol".to_sym].nil? ? 0 : session["#{x_active_tree}_sortcol".to_sym].to_i
     @sortdir = session["#{x_active_tree}_sortdir".to_sym].nil? ? "DESC" : session["#{x_active_tree}_sortdir".to_sym]
+    @no_checkboxes = !role_allows(:feature => "miq_report_saved_reports_admin", :any => true)
     # show all saved reports
     @view, @pages = get_view(MiqReportResult, :association => "all", :where_clause => set_saved_reports_condition)
 
@@ -156,10 +157,10 @@ module ReportController::SavedReports
 
     # Admin users can see all saved reports
     unless admin_user?
-      cond[0] << " AND miq_group_id=?"
-      cond.push(current_group_id)
+      cond[0] << " AND miq_group_id IN (?)"
+      cond.push(current_user.miq_groups.collect(&:id))
     end
 
-    cond.flatten
+    cond
   end
 end

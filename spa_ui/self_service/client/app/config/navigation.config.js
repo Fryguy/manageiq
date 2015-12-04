@@ -51,15 +51,26 @@
     }
 
     function fetchServices() {
-      CollectionsApi.query('services').then(lodash.partial(updateCount, 'services'));
+      var options = {expand: false, filter: ['service_id>0'] };
+      CollectionsApi.query('services', options).then(lodash.partial(updateServicesCount, 'services'));
     }
 
     function fetchServiceTemplates() {
-      CollectionsApi.query('service_templates').then(lodash.partial(updateCount, 'marketplace'));
+      var options = {expand: false, filter: ['service_template_catalog_id>0', 'display=true'] };
+      CollectionsApi.query('service_templates', options).then(
+        lodash.partial(updateServiceTemplatesCount, 'marketplace'));
     }
 
     function updateCount(item, data) {
       Navigation.items.primary[item].count = data.count;
+    }
+
+    function updateServicesCount(item, data) {
+      Navigation.items.primary[item].count = data.count - data.subcount;
+    }
+
+    function updateServiceTemplatesCount(item, data) {
+      Navigation.items.primary[item].count = data.subcount;
     }
   }
 })();
