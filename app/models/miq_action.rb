@@ -95,9 +95,9 @@ class MiqAction < ActiveRecord::Base
     when "snapshot_create"
       errors.add("snapshot_create", "no snapshot name provided") unless self.options && self.options[:name]
     when "reconfigure_cpus"
-      errors.add("reconfigure_cpus", "CPUs valie must be 1, 2 or 4") unless self.options && [1, 2, 4].include?(self.options[:value].to_i)
+      errors.add("reconfigure_cpus", "CPUs value must be 1, 2 or 4") unless self.options && [1, 2, 4].include?(self.options[:value].to_i)
     when "reconfigure_memory"
-      errors.add("reconfigure_cpus", "Memory value must be between 4 and 65,536") unless self.options && self.options[:value].to_i >= 4 && self.options[:value].to_i <= 65536
+      errors.add("reconfigure_memory", "Memory value must be between 4 and 65,536") unless self.options && self.options[:value].to_i >= 4 && self.options[:value].to_i <= 65536
     end
   end
 
@@ -267,7 +267,13 @@ class MiqAction < ActiveRecord::Base
             ems = rec.ext_management_system
             subst = "vCenter #{ems.hostname}/#{ems.ipaddress}" unless ems.nil?
           elsif rec.respond_to?(method)
-            subst = rec.send(method)
+            # Only allow calling methods that are likely safe getters to prevent
+            # unintended method invocation of dangerous methods like 'destroy'.
+            if (rec.class.respond_to?(:attribute_names) && rec.class.attribute_names.include?(method)) ||
+               method.start_with?('v_') ||
+               %w(name hostname ipaddress).include?(method)
+              subst = rec.public_send(method)
+            end
           end
         end
 
@@ -480,8 +486,8 @@ class MiqAction < ActiveRecord::Base
     MiqPolicy.logger.info("MIQ(action_script): Executing: [#{filename}]")
     if File.extname(filename) == ".rb"
       rails_cmd = MiqEnvironment::Command.rails_command
-      MiqPolicy.logger.info("MIQ(action_script): Eval:      [#{rails_cmd} runner #{fname} '#{rec.name}'}]")
-      result, _, status = Open3.capture3(rails_cmd, "runner", fname, "'#{rec.name}'")
+      MiqPolicy.logger.info("MIQ(action_script): Eval:      [#{rails_cmd} runner #{fname} #{rec.name}]")
+      result, _, status = Open3.capture3(rails_cmd, "runner", fname, rec.name)
     else
       MiqPolicy.logger.info("MIQ(action_script): Eval:      [#{fname}]")
       result, _, status = Open3.capture3(fname)
